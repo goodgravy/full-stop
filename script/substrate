@@ -152,7 +152,7 @@ install_brew_packages () {
   if [ -f "$DOTFILES_DIR/Brewfile" ]
   then
     info 'brew bundle'
-    brew bundle
+    ( cd "$DOTFILES_DIR" && brew bundle )
   else
     info 'Brewfile not found'
   fi
@@ -162,6 +162,7 @@ run_topic_installers () {
   # find the installers and run them iteratively
   for installer in $(find -H "$DOTFILES_DIR" -depth 2 -name 'setup.sh' -not -path '*.git*')
   do
+    info "sh -c $installer"
     sh -c $installer
   done
 }
