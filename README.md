@@ -110,8 +110,12 @@ git subtree add --prefix=substrate substrate master
 Then, run the `substrate` script:
 
 ```sh
-$HOME/.dotfiles/substrate/script/substrate
+./substrate/script/substrate
 ```
+
+On the first run, this won't do much. Add some configuration following the
+[Substrate conventions](#what-do-I-need-to-do-to-use-substrate) to really get
+going!
 
 You can re-run the `substrate` script whenever you want to update your
 dependencies, or if you have changed your dotfiles configuration and want to
@@ -119,4 +123,5 @@ apply the changes.
 
 ## Example
 
-You can find my dotfiles (which use Substrate as described above) in [goodgravy/dotfiles](//github.com/goodgravy/dotfiles).
+You can find my dotfiles (which use Substrate as described above) in
+[goodgravy/dotfiles](//github.com/goodgravy/dotfiles).
