@@ -82,10 +82,6 @@ Example of symlinking:
     └── a-nested-file -> /Users/goodgravy/.dotfiles/topic_B/config_directory/a-nested-file.symlink
 ```
 
-**Note**: there is currently only an example integration for [fish
-shell](https://fishshell.com/) but others would be very easy to add. Send me a
-PR!
-
 ## Usage
 
 First, create your dotfiles repository:
