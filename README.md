@@ -2,7 +2,7 @@
 
 Rather than following a "fork and change" model for dotfiles, this repository
 provides tooling and conventions to be included in your own dotfiles as a git
-subtree.
+subtree or submodule.
 
 The idea is to keep the utilities which _manage_ your dotfiles separate from
 the _content_ of the dotfiles themselves. In this way, we should be able to
@@ -14,9 +14,8 @@ The approach taken is based on Zach Holman's excellent
 
 ## What does Substrate do for me?
 
-After you [include substrate as a git subtree](#usage) in your own dotfiles
-repository, just run the included `substrate` script. Using your configuration
-it will:
+After you [include Substrate in your dotfiles](#usage), just run the included
+`substrate` script. Using your configuration it will:
 
 * create symlinks in your `$HOME`
 * install dependencies
@@ -100,11 +99,11 @@ git add Brewfile
 git commit -m 'Initial commit'
 ```
 
-Then, add Substrate as a git subtree:
+Then, add Substrate as a git submodule (subtrees also work, but come with [some
+problems](http://git.661346.n2.nabble.com/subtree-merges-lose-prefix-after-rebase-td7332850.html)):
 
 ```sh
-git remote add substrate git@github.com:goodgravy/substrate.git
-git subtree add --prefix=substrate substrate master
+git submodule add git@github.com:goodgravy/substrate.git substrate
 ```
 
 Then, run the `substrate` script:
@@ -120,6 +119,13 @@ going!
 You can re-run the `substrate` script whenever you want to update your
 dependencies, or if you have changed your dotfiles configuration and want to
 apply the changes.
+
+If you want to benefit from upstream changes to Substrate, just update the
+submodule:
+
+```sh
+git submodule update --remote
+```
 
 ## Example
 
