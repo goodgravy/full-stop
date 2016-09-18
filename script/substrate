@@ -170,8 +170,8 @@ run_topic_installers () {
 
 check_dotfiles_dir
 install_and_update_homebrew
-install_dotfiles
 install_brew_packages
 run_topic_installers
+install_dotfiles
 
 success "Substrate complete"
