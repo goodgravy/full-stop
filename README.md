@@ -1,4 +1,4 @@
-# Dotfiles Substrate
+# Dotfiles Full Stop
 
 Rather than following a "fork and change" model for dotfiles, this repository
 provides tooling and conventions to be included in your own dotfiles as a git
@@ -12,10 +12,10 @@ individual environment preferences.
 The approach taken is based on Zach Holman's excellent
 [dotfiles](https://github.com/holman/dotfiles).
 
-## What does Substrate do for me?
+## What does Full Stop do for me?
 
-After you [include Substrate in your dotfiles](#usage), just run the included
-`substrate` script. Using your configuration it will:
+After you [include Full Stop in your dotfiles](#usage), just run the included
+`full-stop` script. Using your configuration it will:
 
 * create symlinks in your `$HOME`
 * install dependencies
@@ -23,12 +23,12 @@ After you [include Substrate in your dotfiles](#usage), just run the included
 * modify your shell environment
 * and much, much more
 
-You can re-run `substrate` anytime you want to update your configuration and
+You can re-run `full-stop` anytime you want to update your configuration and
 dependencies.
 
-## What do I need to do to use Substrate?
+## What do I need to do to use Full Stop?
 
-Substrate defines a couple of simple conventions for how your dotfiles
+Full Stop defines a couple of simple conventions for how your dotfiles
 configuration should be laid out and specified.
 
 ### System dependencies
@@ -44,15 +44,15 @@ dotfiles repository and put the scripts or binaries in there.
 
 ### Other configuration and dependencies
 
-Substrate uses holman's idea of _topic areas_. For each logical topic that you
+Full Stop uses holman's idea of _topic areas_. For each logical topic that you
 have configuration or dependencies for, just create a directory in your
 dotfiles repository with a descriptive name. For example, you might have
 directories called `ruby`, `node`, `vim`, `atom`, etc..
 
-Substrate follows some simple rules when processing the files in these
+Full Stop follows some simple rules when processing the files in these
 directories:
 
-* files named `setup.sh` will be run as part of the `substrate` command,
+* files named `setup.sh` will be run as part of the `full-stop` command,
   they're normally used to install software and set OS configuration
 * other files named like `my-script.sh` will be sourced into the environment of
   every new shell (see the `shell_integrations` directory)
@@ -71,7 +71,7 @@ Example of symlinking:
     └── config_directory
         └── a-nested-file.symlink
 
-~/.dotfiles $ substrate/script/substrate
+~/.dotfiles $ full-stop/script/full-stop
 [...]
 
 ~/.dotfiles $ tree -a $HOME
@@ -95,28 +95,28 @@ git add Brewfile
 git commit -m 'Initial commit'
 ```
 
-Then, add Substrate as a git submodule (subtrees also work, but come with [some
+Then, add Full Stop as a git submodule (subtrees also work, but come with [some
 problems](http://git.661346.n2.nabble.com/subtree-merges-lose-prefix-after-rebase-td7332850.html)):
 
 ```sh
-git submodule add git@github.com:goodgravy/substrate.git substrate
+git submodule add git@github.com:goodgravy/full-stop.git full-stop
 ```
 
-Then, run the `substrate` script:
+Then, run the `full-stop` script:
 
 ```sh
-./substrate/script/substrate
+./full-stop/script/full-stop
 ```
 
 On the first run, this won't do much. Add some configuration following the
-[Substrate conventions](#what-do-I-need-to-do-to-use-substrate) to really get
+[Full Stop conventions](#what-do-I-need-to-do-to-use-full-stop) to really get
 going!
 
-You can re-run the `substrate` script whenever you want to update your
+You can re-run the `full-stop` script whenever you want to update your
 dependencies, or if you have changed your dotfiles configuration and want to
 apply the changes.
 
-If you want to benefit from upstream changes to Substrate, just update the
+If you want to benefit from upstream changes to Full Stop, just update the
 submodule:
 
 ```sh
@@ -125,5 +125,5 @@ git submodule update --remote
 
 ## Example
 
-You can find my dotfiles (which use Substrate as described above) in
+You can find my dotfiles (which use Full Stop as described above) in
 [goodgravy/dotfiles](//github.com/goodgravy/dotfiles).

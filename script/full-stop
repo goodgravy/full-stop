@@ -4,7 +4,7 @@ set -eu
 set -o pipefail
 
 export DOTFILES_DIR="$HOME/.dotfiles"
-export SUBSTRATE_DIR="$DOTFILES_DIR/substrate"
+export FULL_STOP_DIR="$DOTFILES_DIR/full-stop"
 
 echo ''
 
@@ -34,14 +34,14 @@ check_dotfiles_dir () {
     fail "expected to find a $DOTFILES_DIR directory"
   fi
 
-  if [ "$SUBSTRATE_DIR/script" != "$current_dir" ]
+  if [ "$FULL_STOP_DIR/script" != "$current_dir" ]
   then
-    fail "your dotfiles must go in $DOTFILES_DIR, and Substrate in $SUBSTRATE_DIR"
+    fail "your dotfiles must go in $DOTFILES_DIR, and Full Stop in $FULL_STOP_DIR"
   fi
 }
 
 install_and_update_homebrew () {
-  $SUBSTRATE_DIR/homebrew/setup.sh
+  $FULL_STOP_DIR/homebrew/setup.sh
   info 'brew update'
   brew update
 }
@@ -174,4 +174,4 @@ install_brew_packages
 run_topic_installers
 install_dotfiles
 
-success "Substrate complete"
+success "Full Stop complete"
