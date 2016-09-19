@@ -127,3 +127,43 @@ git submodule update --remote
 
 You can find my dotfiles (which use Full Stop as described above) in
 [goodgravy/dotfiles](//github.com/goodgravy/dotfiles).
+
+### I want to create a `~/.bashrc` file
+
+Easy-peasy:
+
+```sh
+~/.dotfiles $ mkdir bash
+~/.dotfiles $ touch bash/bashrc.symlink
+~/.dotfiles $ ./full-stop/script/full-stop
+  [ .. ] brew update
+  [ .. ] installing dotfiles
+  [ OK ] linked /Users/goodgravy/.dotfiles/bash/bashrc.symlink to /Users/goodgravy/.bashrc
+  [ OK ] Full Stop complete
+~/.dotfiles $ tree -a $HOME
+/Users/goodgravy
+├── [...]
+└── .bashrc -> /Users/goodgravy/.dotfiles/bash/bashrc.symlink
+```
+
+### I want to create a `~/.config/nvim/` directory
+
+Lemon-squeezy:
+
+```sh
+~/.dotfiles $ mkdir -p neovim/config/nvim.symlink
+~/.dotfiles $ ./full-stop/script/full-stop
+  [ .. ] brew update
+  [ OK ] linked /Users/james/.dotfiles/neovim/config/nvim.symlink to /Users/james/.config/nvim
+  [ OK ] Full Stop complete
+~/.dotfiles $ tree ~/.config/
+/Users/james/.config/
+└── nvim -> /Users/james/.dotfiles/neovim/config/nvim.symlink
+
+1 directory, 0 files
+```
+
+As you can see, Full Stop doesn't care if your symlinks are files or
+directories, and it can create symlinks inside of "dot directories" as well as
+dotfiles directly in $HOME (e.g. inside the `~/.config` directory as shown
+above).
