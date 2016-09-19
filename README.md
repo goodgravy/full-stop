@@ -1,4 +1,4 @@
-# Dotfiles Full Stop
+# Full Stop
 
 Rather than following a "fork and change" model for dotfiles, this repository
 provides tooling and conventions to be included in your own dotfiles as a git
