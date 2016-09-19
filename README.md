@@ -152,15 +152,16 @@ Lemon-squeezy:
 
 ```sh
 ~/.dotfiles $ mkdir -p neovim/config/nvim.symlink
+~/.dotfiles $ touch neovim/config/nvim.symlink/init.vim
 ~/.dotfiles $ ./full-stop/script/full-stop
   [ .. ] brew update
   [ OK ] linked /Users/james/.dotfiles/neovim/config/nvim.symlink to /Users/james/.config/nvim
   [ OK ] Full Stop complete
-~/.dotfiles $ tree ~/.config/
+
+~/.dotfiles $ tree -l ~/.config/
 /Users/james/.config/
 └── nvim -> /Users/james/.dotfiles/neovim/config/nvim.symlink
-
-1 directory, 0 files
+    └── init.vim
 ```
 
 As you can see, Full Stop doesn't care if your symlinks are files or
