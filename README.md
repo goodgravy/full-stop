@@ -155,12 +155,12 @@ Lemon-squeezy:
 ~/.dotfiles $ touch neovim/config/nvim.symlink/init.vim
 ~/.dotfiles $ ./full-stop/script/full-stop
   [ .. ] brew update
-  [ OK ] linked /Users/james/.dotfiles/neovim/config/nvim.symlink to /Users/james/.config/nvim
+  [ OK ] linked /Users/goodgravy/.dotfiles/neovim/config/nvim.symlink to /Users/goodgravy/.config/nvim
   [ OK ] Full Stop complete
 
 ~/.dotfiles $ tree -l ~/.config/
-/Users/james/.config/
-└── nvim -> /Users/james/.dotfiles/neovim/config/nvim.symlink
+/Users/goodgravy/.config/
+└── nvim -> /Users/goodgravy/.dotfiles/neovim/config/nvim.symlink
     └── init.vim
 ```
 
