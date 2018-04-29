@@ -3,7 +3,7 @@
 set -eu
 set -o pipefail
 
-export DOTFILES_DIR="$HOME/.dotfiles"
+export DOTFILES_DIR=${DOTFILES_DIR:="$HOME/.dotfiles"}
 export FULL_STOP_DIR="$DOTFILES_DIR/full-stop"
 
 echo ''
