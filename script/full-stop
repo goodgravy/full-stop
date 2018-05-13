@@ -27,16 +27,9 @@ fail () {
 }
 
 check_dotfiles_dir () {
-  local current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
   if ! [ -d "$DOTFILES_DIR" ]
   then
     fail "expected to find a $DOTFILES_DIR directory"
-  fi
-
-  if [ "$FULL_STOP_DIR/script" != "$current_dir" ]
-  then
-    fail "your dotfiles must go in $DOTFILES_DIR, and Full Stop in $FULL_STOP_DIR"
   fi
 }
 
