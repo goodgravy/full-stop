@@ -159,11 +159,14 @@ install_brew_packages () {
 }
 
 run_topic_installers () {
+  local script_path="$( cd "$(dirname "$0")" ; pwd -P )"
+  local output_hooks="$script_path/output-hooks.sh"
+
   # find the installers and run them iteratively
   for installer in $(find -H "$DOTFILES_DIR" -depth 2 -name 'setup.sh' -not -path '*.git*')
   do
-    info "sh -c $installer"
-    sh -c $installer
+    info "sh -c $installer $output_hooks"
+    sh -c "$installer $output_hooks"
   done
 }
 
