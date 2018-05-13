@@ -3,7 +3,7 @@
 set -eu
 set -o pipefail
 
-export DOTFILES_DIR="$HOME/.dotfiles"
+export DOTFILES_DIR=${DOTFILES_DIR:="$HOME/.dotfiles"}
 export FULL_STOP_DIR="$DOTFILES_DIR/full-stop"
 
 echo ''
@@ -27,16 +27,9 @@ fail () {
 }
 
 check_dotfiles_dir () {
-  local current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
   if ! [ -d "$DOTFILES_DIR" ]
   then
     fail "expected to find a $DOTFILES_DIR directory"
-  fi
-
-  if [ "$FULL_STOP_DIR/script" != "$current_dir" ]
-  then
-    fail "your dotfiles must go in $DOTFILES_DIR, and Full Stop in $FULL_STOP_DIR"
   fi
 }
 
@@ -159,11 +152,14 @@ install_brew_packages () {
 }
 
 run_topic_installers () {
+  local script_path="$( cd "$(dirname "$0")" ; pwd -P )"
+  local output_hooks="$script_path/output-hooks.sh"
+
   # find the installers and run them iteratively
   for installer in $(find -H "$DOTFILES_DIR" -depth 2 -name 'setup.sh' -not -path '*.git*')
   do
-    info "sh -c $installer"
-    sh -c $installer
+    info "sh -c $installer $output_hooks"
+    sh -c "$installer $output_hooks"
   done
 }
 
