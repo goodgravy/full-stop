@@ -126,8 +126,8 @@ install_dotfiles () {
 
   local overwrite_all=false backup_all=false skip_all=false
 
-  local not_nested_files=$(find -H "$DOTFILES_DIR"  -depth 2 -name '*.symlink' -not -path '*.git*' ; )
-  local nested_files=$(find -H "$DOTFILES_DIR"  -depth 3 -name '*.symlink' -not -path '*.git*' ; )
+  local not_nested_files=$(find -H "$DOTFILES_DIR" -mindepth 2 -maxdepth 2 -name '*.symlink' -not -path '*.git*' ; )
+  local nested_files=$(find -H "$DOTFILES_DIR" -mindepth 3 -maxdepth 3 -name '*.symlink' -not -path '*.git*' ; )
 
   for src in $not_nested_files
   do
@@ -160,7 +160,7 @@ install_brew_packages () {
 
 run_topic_installers () {
   # find the installers and run them iteratively
-  for installer in $(find -H "$DOTFILES_DIR" -depth 2 -name 'setup.sh' -not -path '*.git*')
+  for installer in $(find -H "$DOTFILES_DIR" -mindepth 2 -maxdepth 2 -name 'setup.sh' -not -path '*.git*')
   do
     info "sh -c $installer"
     sh -c $installer
