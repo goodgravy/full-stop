@@ -291,13 +291,13 @@ check_dotfiles_dir () {
 update_dotfiles_dir () {
   if [[ "$DRY_RUN" == "true" ]]; then
     plan "would git pull --rebase in $DOTFILES_DIR"
-    plan "would git submodule update --remote in $DOTFILES_DIR"
+    plan "would git submodule update --init in $DOTFILES_DIR"
     return
   fi
   info "updating $DOTFILES_DIR"
   ( cd "$DOTFILES_DIR" && git pull --rebase )
-  info "updating $FULL_STOP_DIR"
-  ( cd "$DOTFILES_DIR" && git submodule update --remote )
+  info "updating submodules"
+  ( cd "$DOTFILES_DIR" && git submodule update --init )
 }
 
 install_and_update_homebrew () {
