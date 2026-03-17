@@ -56,9 +56,14 @@ directories:
   they're normally used to install software and set OS configuration
 * other files named like `my-script.sh` will be sourced into the environment of
   every new shell (see the `shell_integrations` directory)
-* files named like `my-file.symlink` will by symlinked to `$HOME/.my-file`
-* files named like `a-directory/a-file.symlink` will by symlinked to
+* files named like `my-file.symlink` will be symlinked to `$HOME/.my-file`
+* files named like `a-directory/a-file.symlink` will be symlinked to
   `$HOME/.a-directory/a-file`
+* files named like `my-config.linkto` will symlink the corresponding source file
+  to the arbitrary path specified inside the `.linkto` file (see
+  [Linking to arbitrary paths](#linking-to-arbitrary-paths))
+* files named `teardown.sh` will be run when `full-stop --unlink` is used, to
+  undo side effects of `setup.sh`
 
 Example of symlinking:
 
@@ -168,3 +173,51 @@ As you can see, Full Stop doesn't care if your symlinks are files or
 directories, and it can create symlinks inside of "dot directories" as well as
 dotfiles directly in $HOME (e.g. inside the `~/.config` directory as shown
 above).
+
+### Linking to arbitrary paths
+
+Not all config files live at `$HOME/.<name>`. For files that need to go
+somewhere else entirely, use a `.linkto` sidecar file. The sidecar contains the
+full destination path:
+
+```sh
+~/.dotfiles $ tree ghostty/
+ghostty/
+├── config                  # the actual config file
+└── config.linkto           # contains the destination path
+
+~/.dotfiles $ cat ghostty/config.linkto
+~/Library/Application Support/com.mitchellh.ghostty/config
+
+~/.dotfiles $ ./full-stop/script/full-stop ghostty
+  [ .. ] installing linkto files
+  [ OK ] created directory /Users/goodgravy/Library/Application Support/com.mitchellh.ghostty
+  [ OK ] linked /Users/goodgravy/.dotfiles/ghostty/config to /Users/goodgravy/Library/Application Support/com.mitchellh.ghostty/config
+  [ OK ] Full Stop complete (topics: ghostty)
+```
+
+The `.linkto` convention parallels `.symlink`: where `.symlink` says "link me to
+the conventional `~/.name` place", `.linkto` says "link me to the explicit path
+I specify". Intermediate directories are created automatically. Paths with
+spaces are handled correctly.
+
+## CLI reference
+
+```
+full-stop [OPTIONS] [TOPIC ...]
+```
+
+| Option | Description |
+|---|---|
+| _(no args)_ | Full run: pull, brew, all topics, all symlinks |
+| `TOPIC ...` | Only process named topics (skips brew and pull) |
+| `--dry-run` / `--plan` | Show what would happen without making changes |
+| `--unlink` | Remove symlinks managed by full-stop |
+| `--unlink TOPIC` | Remove only symlinks from named topics |
+| `--no-brew` | Skip homebrew update and bundle |
+| `--with-brew` | Force homebrew even with topic selection |
+| `--no-pull` | Skip git pull and submodule update |
+| `--list-topics` | List available topics and exit |
+
+Flags compose freely: `full-stop --unlink --dry-run git` previews what
+unlinking the git topic would do.

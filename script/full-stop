@@ -6,7 +6,16 @@ set -o pipefail
 export DOTFILES_DIR="$HOME/.dotfiles"
 export FULL_STOP_DIR="$DOTFILES_DIR/full-stop"
 
-echo ''
+# --- Globals ---
+ACTION="install"
+DRY_RUN=false
+DO_BREW=true
+DO_PULL=true
+BREW_EXPLICIT=false
+SELECTED_TOPICS=()
+EXCLUDED_DIRS=("full-stop" "bin")
+
+# --- Output helpers ---
 
 info () {
   printf "\r  [ \033[00;34m..\033[0m ] $1\n"
@@ -26,6 +35,187 @@ fail () {
   exit
 }
 
+plan () {
+  printf "\r  [ \033[00;36m~~\033[0m ] $1\n"
+}
+
+# --- Shared helpers ---
+
+show_help () {
+  echo "Usage: full-stop [OPTIONS] [TOPIC ...]"
+  echo ""
+  echo "Options:"
+  echo "  --dry-run, --plan   Show what would happen without making changes"
+  echo "  --unlink            Remove symlinks managed by full-stop"
+  echo "  --no-brew           Skip homebrew update and bundle"
+  echo "  --with-brew         Force homebrew even with topic selection"
+  echo "  --no-pull           Skip git pull and submodule update"
+  echo "  --list-topics       List available topics and exit"
+  echo "  --help, -h          Show this help"
+  echo ""
+  echo "Examples:"
+  echo "  full-stop                     # full run"
+  echo "  full-stop git fish            # only process git and fish topics"
+  echo "  full-stop --dry-run           # preview what would happen"
+  echo "  full-stop --unlink            # remove all managed symlinks"
+  echo "  full-stop --unlink git        # remove only git topic symlinks"
+  echo "  full-stop --unlink --dry-run  # preview what would be unlinked"
+}
+
+get_all_topics () {
+  local topics=()
+  for dir in "$DOTFILES_DIR"/*/; do
+    local name
+    name="$(basename "$dir")"
+    local excluded=false
+    for ex in "${EXCLUDED_DIRS[@]}"; do
+      if [ "$name" = "$ex" ]; then
+        excluded=true
+        break
+      fi
+    done
+    if [ "$excluded" = "false" ]; then
+      topics+=("$name")
+    fi
+  done
+  echo "${topics[@]}"
+}
+
+validate_topic () {
+  local topic="$1"
+  for ex in "${EXCLUDED_DIRS[@]}"; do
+    if [ "$topic" = "$ex" ]; then
+      fail "'$topic' is not a valid topic (it is part of the framework)"
+    fi
+  done
+  if ! [ -d "$DOTFILES_DIR/$topic" ]; then
+    fail "topic '$topic' does not exist in $DOTFILES_DIR"
+  fi
+}
+
+list_topics () {
+  info "Available topics:"
+  for t in $(get_all_topics); do
+    local has_setup=""
+    local has_symlinks=""
+    local has_linkto=""
+    [ -f "$DOTFILES_DIR/$t/setup.sh" ] && has_setup=" [setup.sh]"
+    local symcount
+    symcount=$(find -H "$DOTFILES_DIR/$t" -name '*.symlink' 2>/dev/null | wc -l | tr -d ' ')
+    [ "$symcount" -gt 0 ] && has_symlinks=" [${symcount} symlinks]"
+    local linktocount
+    linktocount=$(find -H "$DOTFILES_DIR/$t" -name '*.linkto' 2>/dev/null | wc -l | tr -d ' ')
+    [ "$linktocount" -gt 0 ] && has_linkto=" [${linktocount} linkto]"
+    echo "  $t${has_setup}${has_symlinks}${has_linkto}"
+  done
+}
+
+# Returns search directories based on SELECTED_TOPICS
+# If topics are selected, returns one dir per topic; otherwise returns DOTFILES_DIR
+get_search_dirs () {
+  if [[ ${#SELECTED_TOPICS[@]} -gt 0 ]]; then
+    for topic in "${SELECTED_TOPICS[@]}"; do
+      echo "$DOTFILES_DIR/$topic"
+    done
+  else
+    echo "$DOTFILES_DIR"
+  fi
+}
+
+# Find *.symlink files at the right depth, respecting topic filtering
+# Usage: find_symlink_files "shallow" or find_symlink_files "nested"
+find_symlink_files () {
+  local depth_type=$1
+  while IFS= read -r search_dir; do
+    if [ "$search_dir" = "$DOTFILES_DIR" ]; then
+      local d=$([[ "$depth_type" == "shallow" ]] && echo "2" || echo "3")
+    else
+      local d=$([[ "$depth_type" == "shallow" ]] && echo "1" || echo "2")
+    fi
+    find -H "$search_dir" -mindepth "$d" -maxdepth "$d" -name '*.symlink' -not -path '*.git*'
+  done < <(get_search_dirs)
+}
+
+# Find *.linkto files, respecting topic filtering
+# Uses -print0 for space-safe paths
+find_linkto_files () {
+  while IFS= read -r search_dir; do
+    find -H "$search_dir" -name '*.linkto' -not -path '*.git*' -print0
+  done < <(get_search_dirs)
+}
+
+# Find setup.sh or teardown.sh files, respecting topic filtering
+# Usage: find_topic_scripts "setup.sh" or find_topic_scripts "teardown.sh"
+find_topic_scripts () {
+  local script_name=$1
+  while IFS= read -r search_dir; do
+    if [ "$search_dir" = "$DOTFILES_DIR" ]; then
+      find -H "$search_dir" -mindepth 2 -maxdepth 2 -name "$script_name" -not -path '*.git*'
+    else
+      find -H "$search_dir" -mindepth 1 -maxdepth 1 -name "$script_name" -not -path '*.git*'
+    fi
+  done < <(get_search_dirs)
+}
+
+# --- Argument parsing ---
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run|--plan)
+      DRY_RUN=true
+      ;;
+    --unlink)
+      ACTION="unlink"
+      ;;
+    --no-brew)
+      DO_BREW=false
+      BREW_EXPLICIT=true
+      ;;
+    --with-brew)
+      DO_BREW=true
+      BREW_EXPLICIT=true
+      ;;
+    --no-pull)
+      DO_PULL=false
+      ;;
+    --list-topics)
+      list_topics
+      exit 0
+      ;;
+    --help|-h)
+      show_help
+      exit 0
+      ;;
+    -*)
+      fail "unknown option: $1"
+      ;;
+    *)
+      SELECTED_TOPICS+=("$1")
+      ;;
+  esac
+  shift
+done
+
+# When topics are specified, skip brew and pull by default
+if [[ ${#SELECTED_TOPICS[@]} -gt 0 && "$BREW_EXPLICIT" == "false" ]]; then
+  DO_BREW=false
+  DO_PULL=false
+fi
+
+# Validate selected topics
+for t in "${SELECTED_TOPICS[@]}"; do
+  validate_topic "$t"
+done
+
+echo ''
+
+if [[ "$DRY_RUN" == "true" ]]; then
+  plan "DRY RUN — showing what would happen without making changes"
+  echo ''
+fi
+
+# --- Core functions ---
+
 check_dotfiles_dir () {
   local current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -41,6 +231,11 @@ check_dotfiles_dir () {
 }
 
 update_dotfiles_dir () {
+  if [[ "$DRY_RUN" == "true" ]]; then
+    plan "would git pull --rebase in $DOTFILES_DIR"
+    plan "would git submodule update --remote in $DOTFILES_DIR"
+    return
+  fi
   info "updating $DOTFILES_DIR"
   ( cd "$DOTFILES_DIR" && git pull --rebase )
   info "updating $FULL_STOP_DIR"
@@ -48,13 +243,56 @@ update_dotfiles_dir () {
 }
 
 install_and_update_homebrew () {
+  if [[ "$DRY_RUN" == "true" ]]; then
+    if ! command -v brew &>/dev/null; then
+      plan "would install Homebrew (not currently installed)"
+    else
+      plan "Homebrew already installed"
+    fi
+    plan "would run: brew update"
+    return
+  fi
   $FULL_STOP_DIR/homebrew/setup.sh
   info 'brew update'
   brew update
 }
 
+install_brew_packages () {
+  if [ -f "$DOTFILES_DIR/Brewfile" ]; then
+    if [[ "$DRY_RUN" == "true" ]]; then
+      local count
+      count=$(grep -cve '^\s*#' -e '^\s*$' "$DOTFILES_DIR/Brewfile" || true)
+      plan "would run: brew bundle ($count entries in Brewfile)"
+      return
+    fi
+    info 'brew bundle'
+    ( cd "$DOTFILES_DIR" && brew bundle )
+  else
+    info 'Brewfile not found'
+  fi
+}
+
 link_file () {
   local src=$1 dst=$2
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    if [ -L "$dst" ]; then
+      local currentSrc
+      currentSrc="$(readlink "$dst")"
+      if [ "$currentSrc" == "$src" ]; then
+        plan "ok: $dst -> $src (already linked)"
+      else
+        plan "CONFLICT: $dst exists, points to $currentSrc (would link to $src)"
+      fi
+    elif [ -f "$dst" ]; then
+      plan "CONFLICT: $dst exists as a regular file (would link to $src)"
+    elif [ -d "$dst" ]; then
+      plan "CONFLICT: $dst exists as a directory (would link to $src)"
+    else
+      plan "would link: $dst -> $src"
+    fi
+    return
+  fi
 
   local overwrite= backup= skip=
   local action=
@@ -128,58 +366,236 @@ link_file () {
   fi
 }
 
+unlink_file () {
+  local src=$1 dst=$2
+
+  if [ ! -L "$dst" ]; then
+    if [ -e "$dst" ]; then
+      info "not a symlink, skipping: $dst"
+    fi
+    return
+  fi
+
+  local current_target
+  current_target="$(readlink "$dst")"
+
+  if [ "$current_target" != "$src" ]; then
+    info "symlink does not point to dotfiles, skipping: $dst -> $current_target"
+    return
+  fi
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    plan "would unlink: $dst -> $src"
+    if [ -e "${dst}.backup" ]; then
+      plan "would restore: ${dst}.backup -> $dst"
+    fi
+    return
+  fi
+
+  rm "$dst"
+  success "unlinked $dst (was -> $src)"
+
+  if [ -e "${dst}.backup" ]; then
+    mv "${dst}.backup" "$dst"
+    success "restored ${dst}.backup to $dst"
+  fi
+}
+
 install_dotfiles () {
-  info 'installing dotfiles'
+  if [[ "$DRY_RUN" == "true" ]]; then
+    plan "symlink operations:"
+  else
+    info 'installing dotfiles'
+  fi
 
   local overwrite_all=false backup_all=false skip_all=false
 
-  local not_nested_files=$(find -H "$DOTFILES_DIR" -mindepth 2 -maxdepth 2 -name '*.symlink' -not -path '*.git*' ; )
-  local nested_files=$(find -H "$DOTFILES_DIR" -mindepth 3 -maxdepth 3 -name '*.symlink' -not -path '*.git*' ; )
-
-  for src in $not_nested_files
-  do
+  for src in $(find_symlink_files "shallow"); do
     path_without_symlink_suffix="${src%.*}"
-    dst="$HOME/.$(basename $path_without_symlink_suffix)"
+    dst="$HOME/.$(basename "$path_without_symlink_suffix")"
     link_file "$src" "$dst"
   done
 
-  for src in $nested_files
-  do
+  for src in $(find_symlink_files "nested"); do
     path_without_symlink_suffix="${src%.*}"
-    file_name="$(basename $path_without_symlink_suffix)"
-    dir_name="$(basename $(dirname $path_without_symlink_suffix) )"
+    file_name="$(basename "$path_without_symlink_suffix")"
+    dir_name="$(basename "$(dirname "$path_without_symlink_suffix")")"
     dst_dir="$HOME/.$dir_name"
 
-    mkdir $dst_dir 2>/dev/null || info "$dst_dir already exists"
+    if [[ "$DRY_RUN" == "true" ]]; then
+      if [ ! -d "$dst_dir" ]; then
+        plan "would create directory: $dst_dir"
+      fi
+    else
+      mkdir "$dst_dir" 2>/dev/null || info "$dst_dir already exists"
+    fi
     link_file "$src" "$dst_dir/$file_name"
   done
 }
 
-install_brew_packages () {
-  if [ -f "$DOTFILES_DIR/Brewfile" ]
-  then
-    info 'brew bundle'
-    ( cd "$DOTFILES_DIR" && brew bundle )
+uninstall_dotfiles () {
+  if [[ "$DRY_RUN" == "true" ]]; then
+    plan "symlink removal:"
   else
-    info 'Brewfile not found'
+    info 'unlinking dotfiles'
   fi
-}
 
-run_topic_installers () {
-  # find the installers and run them iteratively
-  for installer in $(find -H "$DOTFILES_DIR" -mindepth 2 -maxdepth 2 -name 'setup.sh' -not -path '*.git*')
-  do
-    info "sh -c $installer"
-    sh -c $installer
+  for src in $(find_symlink_files "shallow"); do
+    path_without_symlink_suffix="${src%.*}"
+    dst="$HOME/.$(basename "$path_without_symlink_suffix")"
+    unlink_file "$src" "$dst"
+  done
+
+  for src in $(find_symlink_files "nested"); do
+    path_without_symlink_suffix="${src%.*}"
+    file_name="$(basename "$path_without_symlink_suffix")"
+    dir_name="$(basename "$(dirname "$path_without_symlink_suffix")")"
+    dst_dir="$HOME/.$dir_name"
+    unlink_file "$src" "$dst_dir/$file_name"
+
+    # Clean up empty parent directories
+    if [ -d "$dst_dir" ] && [ -z "$(ls -A "$dst_dir")" ]; then
+      if [[ "$DRY_RUN" == "true" ]]; then
+        plan "would remove empty directory: $dst_dir"
+      else
+        rmdir "$dst_dir"
+        success "removed empty directory $dst_dir"
+      fi
+    fi
   done
 }
 
+install_linkto_files () {
+  local found_any=false
+
+  local overwrite_all=false backup_all=false skip_all=false
+
+  while IFS= read -r -d '' linkto_file; do
+    if [ "$found_any" = "false" ]; then
+      found_any=true
+      if [[ "$DRY_RUN" == "true" ]]; then
+        plan "linkto operations:"
+      else
+        info 'installing linkto files'
+      fi
+    fi
+
+    local dst
+    dst="$(head -n 1 "$linkto_file")"
+
+    # Skip blank or comment-only .linkto files
+    [[ -z "$dst" || "$dst" == \#* ]] && continue
+
+    # Expand ~ to $HOME
+    dst="${dst/#\~/$HOME}"
+
+    # The source is the .linkto file without the .linkto suffix
+    local src="${linkto_file%.linkto}"
+
+    if ! [ -e "$src" ] && ! [ -d "$src" ]; then
+      fail "linkto source missing: $src (referenced by $linkto_file)"
+    fi
+
+    # Create intermediate directories
+    local dst_dir
+    dst_dir="$(dirname "$dst")"
+    if ! [ -d "$dst_dir" ]; then
+      if [[ "$DRY_RUN" == "true" ]]; then
+        plan "would create directory: $dst_dir"
+      else
+        mkdir -p "$dst_dir"
+        success "created directory $dst_dir"
+      fi
+    fi
+
+    link_file "$src" "$dst"
+  done < <(find_linkto_files)
+}
+
+uninstall_linkto_files () {
+  local found_any=false
+
+  while IFS= read -r -d '' linkto_file; do
+    if [ "$found_any" = "false" ]; then
+      found_any=true
+      if [[ "$DRY_RUN" == "true" ]]; then
+        plan "linkto removal:"
+      else
+        info 'unlinking linkto files'
+      fi
+    fi
+
+    local dst
+    dst="$(head -n 1 "$linkto_file")"
+    [[ -z "$dst" || "$dst" == \#* ]] && continue
+    dst="${dst/#\~/$HOME}"
+
+    local src="${linkto_file%.linkto}"
+    unlink_file "$src" "$dst"
+  done < <(find_linkto_files)
+}
+
+run_topic_installers () {
+  if [[ "$DRY_RUN" == "true" ]]; then
+    local found=false
+    for installer in $(find_topic_scripts "setup.sh"); do
+      if [ "$found" = "false" ]; then
+        found=true
+        plan "topic installers that would run:"
+      fi
+      plan "  $installer"
+    done
+    if [ "$found" = "false" ]; then
+      plan "no topic installers found"
+    fi
+    return
+  fi
+
+  for installer in $(find_topic_scripts "setup.sh"); do
+    info "sh -c $installer"
+    sh -c "$installer"
+  done
+}
+
+run_topic_teardowns () {
+  for teardown in $(find_topic_scripts "teardown.sh"); do
+    if [[ "$DRY_RUN" == "true" ]]; then
+      plan "would run teardown: $teardown"
+    else
+      info "sh -c $teardown"
+      sh -c "$teardown"
+    fi
+  done
+}
+
+# --- Main execution ---
 
 check_dotfiles_dir
-update_dotfiles_dir
-install_and_update_homebrew
-install_brew_packages
-run_topic_installers
-install_dotfiles
 
-success "Full Stop complete"
+if [[ "$ACTION" == "unlink" ]]; then
+  run_topic_teardowns
+  uninstall_dotfiles
+  uninstall_linkto_files
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo ''
+    plan "DRY RUN complete — no changes were made"
+  else
+    success "Full Stop unlink complete"
+  fi
+else
+  [[ "$DO_PULL" == "true" ]] && update_dotfiles_dir
+  [[ "$DO_BREW" == "true" ]] && install_and_update_homebrew && install_brew_packages
+  run_topic_installers
+  install_dotfiles
+  install_linkto_files
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo ''
+    plan "DRY RUN complete — no changes were made"
+  else
+    if [[ ${#SELECTED_TOPICS[@]} -gt 0 ]]; then
+      success "Full Stop complete (topics: ${SELECTED_TOPICS[*]})"
+    else
+      success "Full Stop complete"
+    fi
+  fi
+fi
