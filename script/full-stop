@@ -9,6 +9,7 @@ export FULL_STOP_DIR="$DOTFILES_DIR/full-stop"
 # --- Globals ---
 ACTION="install"
 DRY_RUN=false
+FORCE=false
 DO_BREW=true
 DO_PULL=true
 BREW_EXPLICIT=false
@@ -47,6 +48,7 @@ show_help () {
   echo "Options:"
   echo "  --dry-run, --plan   Show what would happen without making changes"
   echo "  --unlink            Remove symlinks managed by full-stop"
+  echo "  --force             Overwrite existing files without prompting"
   echo "  --no-brew           Skip homebrew update and bundle"
   echo "  --with-brew         Force homebrew even with topic selection"
   echo "  --no-pull           Skip git pull and submodule update"
@@ -166,6 +168,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     --unlink)
       ACTION="unlink"
+      ;;
+    --force)
+      FORCE=true
       ;;
     --no-brew)
       DO_BREW=false
@@ -408,7 +413,7 @@ install_dotfiles () {
     info 'installing dotfiles'
   fi
 
-  local overwrite_all=false backup_all=false skip_all=false
+  local overwrite_all=$FORCE backup_all=false skip_all=false
 
   for src in $(find_symlink_files "shallow"); do
     path_without_symlink_suffix="${src%.*}"
@@ -468,7 +473,7 @@ uninstall_dotfiles () {
 install_linkto_files () {
   local found_any=false
 
-  local overwrite_all=false backup_all=false skip_all=false
+  local overwrite_all=$FORCE backup_all=false skip_all=false
 
   while IFS= read -r -d '' linkto_file; do
     if [ "$found_any" = "false" ]; then
